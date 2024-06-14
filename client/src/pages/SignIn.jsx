@@ -3,19 +3,22 @@ import { Alert, Label, Spinner } from "flowbite-react";
 import { TextInput } from "flowbite-react";
 import { Button } from "flowbite-react";
 import { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  signInStart,
+  signInSuccess,
+  signInFailure,
+} from "../redux/user/userSlice.js";
 
 export default function SignIn() {
-
-   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: "",
     email: "",
     password: "",
   });
-
-  const [errorMessage, setErrorMessage] = useState(null);
-  const [loading, setLoading] = useState(false);
-
+  const {loading, error: errorMessage } = useSelector(state => state.user)//state.user = the userSlice (name=user) in the global state
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -26,31 +29,32 @@ export default function SignIn() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.email || !formData.password) {
-      return setErrorMessage("Please fill out all fields");
+      return dispatch(signInFailure("Please fill out all fields"));
     }
     try {
-      setLoading(true);
-      setErrorMessage(null);
+      dispatch(signInStart());
       const res = await fetch("/api/auth/signin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
       console.log(res);
-      const data = await res.json();
+      const data = await res.json(); // validUser data: _id, username, creation timestamp
       console.log(data);
       if (data.success === false) {
         // /api/index.js L26-L35 errorHandler
-        return setErrorMessage(data.message);
+        // return setErrorMessage(data.message);
+        dispatch(signInFailure(data.message)); // data.message = payload
       }
-      setLoading(false);
-      if(res.ok){
-        navigate('/')
+      if (res.ok) {
+        dispatch(signInSuccess(data));
+        navigate("/");
       }
     } catch (error) {
-      setErrorMessage(error.message);
-      setLoading(false);
-      console.error(error.message); // error.message coming from /api/index.js
+      // setErrorMessage(error.message);
+      // setLoading(false);
+      // console.error(error.message); // error.message coming from /api/index.js
+      dispatch(signInFailure(error.message));
     }
   };
   return (
@@ -116,7 +120,7 @@ export default function SignIn() {
             <span>
               Don't have an account?
               <Link to="sign-up" className="text-blue-500 pl-1">
-              Sign Up
+                Sign Up
               </Link>
             </span>
           </div>
@@ -131,4 +135,3 @@ export default function SignIn() {
     </div>
   );
 }
-
